@@ -12,10 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# رابط اللوجو المباشر من جوجل درايف
 LOGO_URL = "https://lh3.googleusercontent.com/d/1Gxf8uTnDc_u4ivDQ-ZIIY0j_XFrJwuom"
-
-# ملف الإعدادات الدائم
 CONFIG_FILE = "config_links.json"
 
 def load_config():
@@ -32,18 +29,7 @@ def load_config():
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if "companies" not in data:
-                    new_companies = {}
-                    for k, v in data.items():
-                        if k not in ["username", "password"]:
-                            new_companies[k] = {"link": v, "target": 20}
-                    return {
-                        "username": "admin",
-                        "password": "1234",
-                        "companies": new_companies if new_companies else default_config["companies"]
-                    }
-                return data
+                return json.load(f)
         except:
             pass
     return default_config
@@ -54,25 +40,16 @@ def save_config(config_data):
 
 config = load_config()
 
-# --- تنسيق عام للخلفية والقائمة الجانبية ---
+# --- تنسيق عام ---
 st.markdown("""
     <style>
-    .stApp {
-        background-color: #f8fafc;
-        direction: rtl;
-    }
-    
-    [data-testid="stSidebar"] {
-        background-color: #0f172a;
-        color: #f8fafc;
-    }
-    [data-testid="stSidebar"] label, [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-        color: #f8fafc !important;
-    }
+    .stApp { background-color: #f8fafc; direction: rtl; }
+    [data-testid="stSidebar"] { background-color: #0f172a; color: #f8fafc; }
+    [data-testid="stSidebar"] label, [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 { color: #f8fafc !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- نظام الحماية وتسجيل الدخول ---
+# --- تسجيل الدخول ---
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
@@ -86,16 +63,14 @@ if not st.session_state.authenticated:
     st.markdown("<h2 style='text-align: center; color: #1e3a8a;'>🔐 تسجيل الدخول — Sameq Rank</h2>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
-        try:
-            st.image(LOGO_URL, width=140)
-        except:
-            pass
+        try: st.image(LOGO_URL, width=140)
+        except: pass
         st.text_input("اسم المستخدم:", key="username_input")
         st.text_input("كلمة المرور:", type="password", key="password_input")
         st.button("دخول", on_click=check_login, use_container_width=True)
     st.stop()
 
-# --- 1. الهيدر الرئيسي (بنر كحلي فاخر) ---
+# --- الهيدر ---
 st.markdown(f"""
     <div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); padding: 25px 30px; border-radius: 16px; color: white; box-shadow: 0 8px 20px rgba(0,0,0,0.12); margin-bottom: 25px; display: flex; align-items: center; gap: 20px;">
         <img src="{LOGO_URL}" width="80" style="border-radius: 12px; background: white; padding: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
@@ -106,28 +81,23 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# --- القائمة الجانبية (Sidebar) ---
+# --- القائمة الجانبية ---
 st.sidebar.header("⚙️ لوحة التحكم والإعدادات")
-
 companies_dict = config["companies"]
 available_companies = list(companies_dict.keys())
 
-selected_companies = st.sidebar.multiselect(
-    "اختر الشركات للمتابعة:", 
-    options=available_companies, 
-    default=available_companies 
-)
+selected_companies = st.sidebar.multiselect("اختر الشركات للمتابعة:", options=available_companies, default=available_companies)
 
 with st.sidebar.expander("🔗 إعداد الروابط والأهداف الشهرية"):
     st.write("ضع رابط الشيت وأدخل الهدف الشهري للمهام:")
     updated = False
     for comp in available_companies:
         st.markdown(f"**🏢 {comp}**")
-        curr_link = companies_dict[comp]["link"]
-        curr_target = companies_dict[comp]["target"]
+        curr_link = companies_dict[comp].get("link", "")
+        curr_target = companies_dict[comp].get("target", 20)
         
         new_link = st.text_input(f"رابط شيت {comp}:", value=curr_link, key=f"link_{comp}")
-        new_target = st.number_input(f"الهدف الشهري:", value=int(curr_target), min_value=1, max_value=200, key=f"target_{comp}")
+        new_target = st.number_input(f"الهدف الشهري اليدوي:", value=int(curr_target), min_value=1, max_value=200, key=f"target_{comp}")
         
         if new_link != curr_link or new_target != curr_target:
             companies_dict[comp]["link"] = new_link
@@ -139,37 +109,7 @@ with st.sidebar.expander("🔗 إعداد الروابط والأهداف الش
         config["companies"] = companies_dict
         save_config(config)
 
-with st.sidebar.expander("➕ إضافة شركة جديدة"):
-    new_comp_name = st.text_input("اسم الشركة الجديدة:")
-    new_sheet_url = st.text_input("رابط Google Sheet:")
-    new_comp_target = st.number_input("الهدف الشهري للمهام:", value=20, min_value=1)
-    if st.button("حفظ الشركة الجديدة"):
-        if new_comp_name:
-            if new_comp_name not in companies_dict:
-                companies_dict[new_comp_name] = {"link": new_sheet_url, "target": new_comp_target}
-                config["companies"] = companies_dict
-                save_config(config)
-                st.success(f"تمت إضافة '{new_comp_name}' بنجاح!")
-                st.rerun()
-            else:
-                st.warning("⚠️ الشركة موجودة مسبقاً!")
-        else:
-            st.error("❌ برجاء إدخال اسم الشركة.")
-
-with st.sidebar.expander("🔐 إعدادات حساب الدخول"):
-    new_user = st.text_input("اسم المستخدم الجديد:", value=config["username"])
-    new_pass = st.text_input("كلمة المرور الجديدة:", type="password", value=config["password"])
-    if st.button("تحديث بيانات الدخول"):
-        if new_user and new_pass:
-            config["username"] = new_user
-            config["password"] = new_pass
-            save_config(config)
-            st.success("✅ تم تحديث بيانات الدخول بنجاح!")
-        else:
-            st.error("❌ املأ الحقول بشكل صحيح.")
-
 st.sidebar.markdown("---")
-
 date_mode = st.sidebar.radio("طريقة عرض التواريخ:", ["تاريخ اليوم", "تاريخ محدد", "فترة زمنية"])
 today = datetime.date.today()
 
@@ -187,44 +127,47 @@ else:
 
 def get_csv_export_url(url):
     match_id = re.search(r'/d/([a-zA-Z0-9-_]+)', url)
-    if not match_id:
-        return url
+    if not match_id: return url
     sheet_id = match_id.group(1)
     match_gid = re.search(r'[?&]gid=([0-9]+)', url) or re.search(r'#gid=([0-9]+)', url)
     gid = match_gid.group(1) if match_gid else '0'
     return f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
 
-@st.cache_data(ttl=10)
+@st.cache_data(ttl=5)
 def fetch_all_tasks(config_json_str):
     cfg = json.loads(config_json_str)
     companies_dict = cfg["companies"]
     all_tasks = []
     for comp, data in companies_dict.items():
-        url = data["link"]
-        if not url.strip():
-            continue
+        url = data.get("link", "")
+        if not url.strip(): continue
         try:
             csv_url = get_csv_export_url(url)
             df = pd.read_csv(csv_url)
-            df.columns = df.columns.str.strip()
+            df.columns = [str(col).strip() for col in df.columns]
             
+            service_col = next((c for c in df.columns if "خدمة" in c or "خدمه" in c or "مهمة" in c), df.columns[0])
+            date_col = next((c for c in df.columns if "تاريخ" in c), df.columns[1] if len(df.columns) > 1 else "")
+            status_col = next((c for c in df.columns if "حالة" in c or "الحالة" in c), df.columns[2] if len(df.columns) > 2 else "")
+            notes_col = next((c for c in df.columns if "ملاحظات" in c), "")
+
             for _, row in df.iterrows():
-                task_text = row.get("الخدمة")
-                if pd.isna(task_text) or str(task_text).strip() == "":
+                task_raw = str(row.get(service_col, "")).strip()
+                if not task_raw or task_raw.lower() in ["nan", "none", "null", "0", "unnamed: 0"]:
                     continue
                 
-                date_str = str(row.get("تاريخ بدء الخدمة", ""))
+                date_str = str(row.get(date_col, "")).strip() if date_col else ""
                 try:
-                    task_date = datetime.datetime.strptime(date_str.strip(), "%Y-%m-%d").date()
+                    task_date = pd.to_datetime(date_str).date()
                 except:
                     continue 
                 
-                status = str(row.get("الحالة", "غير محدد")).strip()
-                notes = str(row.get("ملاحظات", "")).strip()
+                status = str(row.get(status_col, "غير محدد")).strip() if status_col else "غير محدد"
+                notes = str(row.get(notes_col, "")).strip() if notes_col else ""
                 
                 all_tasks.append({
                     "company": comp,
-                    "task": str(task_text).strip(),
+                    "task": task_raw,
                     "date": task_date,
                     "status": status,
                     "notes": notes if notes.lower() != "nan" else "",
@@ -236,7 +179,7 @@ def fetch_all_tasks(config_json_str):
 config_json_str = json.dumps(config)
 real_tasks = fetch_all_tasks(config_json_str)
 
-# --- 2. قسم ملخص الأداء والتقييم ---
+# --- 2. قسم ملخص الأداء ---
 st.markdown("""
     <div style="background-color: #dcfce7; padding: 25px; border-radius: 16px; border: 2px solid #86efac; box-shadow: 0 4px 12px rgba(0,0,0,0.04); margin-bottom: 25px;">
         <h3 style="color: #166534; margin-top: 0;">📊 ملخص الأداء والإنتاجية الشهرية</h3>
@@ -246,13 +189,17 @@ company_stats = []
 chart_data = {}
 
 for comp in selected_companies:
-    target = config["companies"][comp]["target"]
-    completed_count = sum(1 for t in real_tasks if t["company"] == comp and "تم" in t["status"])
+    total_company_tasks = [t for t in real_tasks if t["company"] == comp]
+    completed_count = sum(1 for t in total_company_tasks if "تم" in t["status"])
+    
+    # حساب عدد المهام المكتوبة الحقيقي في الشيت مباشرة
+    total_written_tasks = len(total_company_tasks)
+    
     company_stats.append({
         "الشركة": comp,
         "المنجز": completed_count,
-        "المستهدف": target,
-        "النسبة": int((completed_count / target) * 100) if target > 0 else 0
+        "المستهدف": total_written_tasks,
+        "النسبة": int((completed_count / total_written_tasks) * 100) if total_written_tasks > 0 else 0
     })
     chart_data[comp] = completed_count
 
@@ -272,18 +219,17 @@ st.markdown('</div>', unsafe_allow_html=True)
 # --- تصفية المهام ---
 filtered_tasks = []
 for t in real_tasks:
-    if t["company"] not in selected_companies:
-        continue
+    if t["company"] not in selected_companies: continue
     if start_date <= t["date"] <= end_date:
         filtered_tasks.append(t)
 
-# --- 3. قسم جدول المهام + زرار تحميل التقرير للإكسيل ---
+# --- 3. جدول المهام المطابقة ---
 st.markdown(f"""
     <div style="background-color: #dbeafe; padding: 25px; border-radius: 16px; border: 2px solid #93c5fd; box-shadow: 0 4px 12px rgba(0,0,0,0.04); margin-bottom: 25px;">
         <h3 style="color: #1e40af; margin-top: 0;">📋 جدول المهام المطابقة ({len(filtered_tasks)} مهمة):</h3>
 """, unsafe_allow_html=True)
 
-has_links = any(d["link"].strip() for d in config["companies"].values())
+has_links = any(d.get("link", "").strip() for d in config["companies"].values())
 
 if not has_links:
     st.warning("⚠️ برجاء وضع روابط Google Sheets للشركات من القائمة الجانبية لتظهر البيانات.")
@@ -293,7 +239,8 @@ elif not filtered_tasks:
     st.warning(f"⚠️ لا توجد مهام مطابقة للفترة المحددة ({start_date} إلى {end_date}).")
 else:
     for i, t in enumerate(filtered_tasks):
-        status_color = "🟢" if "تم" in t["status"] else ("🔴" if "بدأ" in t["status"] else "🟡")
+        status_str = t["status"]
+        status_color = "🟢" if "تم" in status_str else ("🔴" if "بدأ" in status_str or "تنفيذ" in status_str else "🟡")
         
         card_html = f"""
         <div style="background-color: white; padding: 16px; border-radius: 10px; border-right: 6px solid #1e3a8a; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.03); margin-bottom: 10px;">
@@ -305,15 +252,8 @@ else:
         """
         st.markdown(card_html, unsafe_allow_html=True)
     
-    # --- إضافة زرار تصدير وتحميل المهام كملف Excel متوافق ---
     df_export = pd.DataFrame(filtered_tasks)
-    df_export = df_export.rename(columns={
-        "company": "الشركة",
-        "task": "الخدمة / المهمة",
-        "date": "التاريخ",
-        "status": "الحالة",
-        "notes": "ملاحظات"
-    })
+    df_export = df_export.rename(columns={"company": "الشركة", "task": "الخدمة / المهمة", "date": "التاريخ", "status": "الحالة", "notes": "ملاحظات"})
     csv_data = df_export.to_csv(index=False, encoding="utf-8-sig")
     
     st.markdown("<br>", unsafe_allow_html=True)
@@ -327,14 +267,12 @@ else:
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 4. قسم الرسم البياني ---
+# --- 4. الرسم البياني ---
 if chart_data:
     st.markdown("""
         <div style="background-color: #f3e8ff; padding: 25px; border-radius: 16px; border: 2px solid #d8b4fe; box-shadow: 0 4px 12px rgba(0,0,0,0.04); margin-bottom: 25px;">
             <h3 style="color: #6b21a8; margin-top: 0;">📈 الرسم البياني للمهام المنجزة لكل شركة</h3>
     """, unsafe_allow_html=True)
-    
     chart_df = pd.DataFrame(list(chart_data.items()), columns=["الشركة", "المهام المنجزة"]).set_index("الشركة")
     st.bar_chart(chart_df)
-    
     st.markdown('</div>', unsafe_allow_html=True)
