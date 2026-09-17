@@ -49,15 +49,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- تسجيل الدخول ---
+# --- تسجيل الدخول (تصحيح آمن لمنع KeyError) ---
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
-
-def check_login():
-    if st.session_state.username_input == config["username"] and st.session_state.password_input == config["password"]:
-        st.session_state.authenticated = True
-    else:
-        st.error("❌ اسم المستخدم أو كلمة المرور غير صحيحة")
 
 if not st.session_state.authenticated:
     st.markdown("<h2 style='text-align: center; color: #1e3a8a;'>🔐 تسجيل الدخول — Sameq Rank</h2>", unsafe_allow_html=True)
@@ -65,12 +59,19 @@ if not st.session_state.authenticated:
     with col2:
         try: st.image(LOGO_URL, width=140)
         except: pass
-        st.text_input("اسم المستخدم:", key="username_input")
-        st.text_input("كلمة المرور:", type="password", key="password_input")
-        st.button("دخول", on_click=check_login, use_container_width=True)
+        
+        user_input = st.text_input("اسم المستخدم:")
+        pass_input = st.text_input("كلمة المرور:", type="password")
+        
+        if st.button("دخول", use_container_width=True):
+            if user_input == config.get("username", "admin") and pass_input == config.get("password", "1234"):
+                st.session_state.authenticated = True
+                st.rerun()
+            else:
+                st.error("❌ اسم المستخدم أو كلمة المرور غير صحيحة")
     st.stop()
 
-# --- الهيدر ---
+# --- الهيدر الرئيسي ---
 st.markdown(f"""
     <div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); padding: 25px 30px; border-radius: 16px; color: white; box-shadow: 0 8px 20px rgba(0,0,0,0.12); margin-bottom: 25px; display: flex; align-items: center; gap: 20px;">
         <img src="{LOGO_URL}" width="80" style="border-radius: 12px; background: white; padding: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
@@ -83,7 +84,7 @@ st.markdown(f"""
 
 # --- القائمة الجانبية ---
 st.sidebar.header("⚙️ لوحة التحكم والإعدادات")
-companies_dict = config["companies"]
+companies_dict = config.get("companies", {})
 available_companies = list(companies_dict.keys())
 
 selected_companies = st.sidebar.multiselect("اختر الشركات للمتابعة:", options=available_companies, default=available_companies)
@@ -136,7 +137,7 @@ def get_csv_export_url(url):
 @st.cache_data(ttl=5)
 def fetch_all_tasks(config_json_str):
     cfg = json.loads(config_json_str)
-    companies_dict = cfg["companies"]
+    companies_dict = cfg.get("companies", {})
     all_tasks = []
     for comp, data in companies_dict.items():
         url = data.get("link", "")
@@ -179,7 +180,7 @@ def fetch_all_tasks(config_json_str):
 config_json_str = json.dumps(config)
 real_tasks = fetch_all_tasks(config_json_str)
 
-# --- 2. قسم ملخص الأداء ---
+# --- 2. قسم ملخص الأداء والتقييم ---
 st.markdown("""
     <div style="background-color: #dcfce7; padding: 25px; border-radius: 16px; border: 2px solid #86efac; box-shadow: 0 4px 12px rgba(0,0,0,0.04); margin-bottom: 25px;">
         <h3 style="color: #166534; margin-top: 0;">📊 ملخص الأداء والإنتاجية الشهرية</h3>
@@ -192,14 +193,15 @@ for comp in selected_companies:
     total_company_tasks = [t for t in real_tasks if t["company"] == comp]
     completed_count = sum(1 for t in total_company_tasks if "تم" in t["status"])
     
-    # حساب عدد المهام المكتوبة الحقيقي في الشيت مباشرة
+    # حساب إجمالي عدد المهام المكتوبة الحقيقي في الشيت
     total_written_tasks = len(total_company_tasks)
+    display_target = total_written_tasks if total_written_tasks > 0 else config["companies"][comp].get("target", 20)
     
     company_stats.append({
         "الشركة": comp,
         "المنجز": completed_count,
-        "المستهدف": total_written_tasks,
-        "النسبة": int((completed_count / total_written_tasks) * 100) if total_written_tasks > 0 else 0
+        "المستهدف": display_target,
+        "النسبة": int((completed_count / display_target) * 100) if display_target > 0 else 0
     })
     chart_data[comp] = completed_count
 
