@@ -29,14 +29,23 @@ def load_config():
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                if isinstance(data, dict):
+                    if "companies" not in data or not isinstance(data["companies"], dict):
+                        data["companies"] = default_config["companies"]
+                    if "username" not in data: data["username"] = "admin"
+                    if "password" not in data: data["password"] = "1234"
+                    return data
         except:
             pass
     return default_config
 
 def save_config(config_data):
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(config_data, f, ensure_ascii=False, indent=4)
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(config_data, f, ensure_ascii=False, indent=4)
+    except:
+        pass
 
 config = load_config()
 
@@ -49,7 +58,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- تسجيل الدخول (تصحيح آمن لمنع KeyError) ---
+# --- تسجيل الدخول ---
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
@@ -94,13 +103,18 @@ with st.sidebar.expander("🔗 إعداد الروابط والأهداف الش
     updated = False
     for comp in available_companies:
         st.markdown(f"**🏢 {comp}**")
-        curr_link = companies_dict[comp].get("link", "")
-        curr_target = companies_dict[comp].get("target", 20)
+        comp_data = companies_dict.get(comp, {})
+        if not isinstance(comp_data, dict): comp_data = {}
+        
+        curr_link = comp_data.get("link", "")
+        curr_target = comp_data.get("target", 20)
         
         new_link = st.text_input(f"رابط شيت {comp}:", value=curr_link, key=f"link_{comp}")
         new_target = st.number_input(f"الهدف الشهري اليدوي:", value=int(curr_target), min_value=1, max_value=200, key=f"target_{comp}")
         
         if new_link != curr_link or new_target != curr_target:
+            if comp not in companies_dict or not isinstance(companies_dict[comp], dict):
+                companies_dict[comp] = {}
             companies_dict[comp]["link"] = new_link
             companies_dict[comp]["target"] = new_target
             updated = True
@@ -136,12 +150,20 @@ def get_csv_export_url(url):
 
 @st.cache_data(ttl=5)
 def fetch_all_tasks(config_json_str):
-    cfg = json.loads(config_json_str)
+    try:
+        cfg = json.loads(config_json_str)
+    except:
+        return []
+        
     companies_dict = cfg.get("companies", {})
+    if not isinstance(companies_dict, dict):
+        return []
+        
     all_tasks = []
     for comp, data in companies_dict.items():
+        if not isinstance(data, dict): continue
         url = data.get("link", "")
-        if not url.strip(): continue
+        if not isinstance(url, str) or not url.strip(): continue
         try:
             csv_url = get_csv_export_url(url)
             df = pd.read_csv(csv_url)
@@ -193,9 +215,9 @@ for comp in selected_companies:
     total_company_tasks = [t for t in real_tasks if t["company"] == comp]
     completed_count = sum(1 for t in total_company_tasks if "تم" in t["status"])
     
-    # حساب إجمالي عدد المهام المكتوبة الحقيقي في الشيت
     total_written_tasks = len(total_company_tasks)
-    display_target = total_written_tasks if total_written_tasks > 0 else config["companies"][comp].get("target", 20)
+    comp_target = companies_dict.get(comp, {}).get("target", 20) if isinstance(companies_dict.get(comp), dict) else 20
+    display_target = total_written_tasks if total_written_tasks > 0 else comp_target
     
     company_stats.append({
         "الشركة": comp,
@@ -231,7 +253,9 @@ st.markdown(f"""
         <h3 style="color: #1e40af; margin-top: 0;">📋 جدول المهام المطابقة ({len(filtered_tasks)} مهمة):</h3>
 """, unsafe_allow_html=True)
 
-has_links = any(d.get("link", "").strip() for d in config["companies"].values())
+has_links = False
+if isinstance(companies_dict, dict):
+    has_links = any(isinstance(d, dict) and d.get("link", "").strip() for d in companies_dict.values())
 
 if not has_links:
     st.warning("⚠️ برجاء وضع روابط Google Sheets للشركات من القائمة الجانبية لتظهر البيانات.")
