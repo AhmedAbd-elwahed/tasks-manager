@@ -17,8 +17,8 @@ CONFIG_FILE = "config_links.json"
 
 def load_config():
     default_config = {
-        "username": "admin",
-        "password": "1234",
+        "username": "ahmed9001",
+        "password": "a44842104",
         "companies": {
             "Tam-Crete Engineering": {"link": "", "target": 20},
             "tam-building": {"link": "", "target": 20},
@@ -33,8 +33,8 @@ def load_config():
                 if isinstance(data, dict):
                     if "companies" not in data or not isinstance(data["companies"], dict):
                         data["companies"] = default_config["companies"]
-                    if "username" not in data: data["username"] = "admin"
-                    if "password" not in data: data["password"] = "1234"
+                    if "username" not in data: data["username"] = "ahmed9001"
+                    if "password" not in data: data["password"] = "a44842104"
                     return data
         except:
             pass
@@ -73,7 +73,7 @@ if not st.session_state.authenticated:
         pass_input = st.text_input("كلمة المرور:", type="password")
         
         if st.button("دخول", use_container_width=True):
-            if user_input == config.get("username", "admin") and pass_input == config.get("password", "1234"):
+            if user_input == config.get("username", "ahmed9001") and pass_input == config.get("password", "a44842104"):
                 st.session_state.authenticated = True
                 st.rerun()
             else:
